@@ -2,10 +2,11 @@ requests = require('requests')
 
 local queries = require('queries')
 local functions = require('functions')
+local config = require('config')
 
 headers = {['Content-Type'] = 'application/json'}
 
-response = requests.get{'https://elasticsearch.bitshares-kibana.info/_search?scroll=1m', data=queries.first_query, headers = headers}
+response = requests.get{config.es_direct_connection .. '_search?scroll=1m', data=queries.first_query(config.from, config.to), headers = headers}
 
 json_body, error = response.json()
 
@@ -26,7 +27,7 @@ while total > 0 do
     }
 
     ]]
-    response = requests.get{'https://elasticsearch.bitshares-kibana.info/_search/scroll', data=scroll_query, headers = headers}
+    response = requests.get{config.es_direct_connection .. '_search/scroll', data=scroll_query, headers = headers}
 
     json_body, error = response.json()
 
@@ -40,7 +41,7 @@ end
 for k, v in pairs(markets) do
 
     quote_query=queries.asset_query(v.quote)
-    response = requests.get{'https://elasticsearch.bitshares-kibana.info/_search', data=quote_query, headers = headers}
+    response = requests.get{config.es_direct_connection .. '_search', data=quote_query, headers = headers}
 
     json_body, error = response.json()
 
@@ -48,7 +49,7 @@ for k, v in pairs(markets) do
     --quote_name = ""
 
     base_query=queries.asset_query(v.base)
-    response = requests.get{'https://elasticsearch.bitshares-kibana.info/_search', data=base_query, headers = headers}
+    response = requests.get{config.es_direct_connection .. '_search', data=base_query, headers = headers}
 
     json_body, error = response.json()
 
@@ -57,18 +58,12 @@ for k, v in pairs(markets) do
     base_name = json_body.hits.hits[1]._source.symbol
 
 
-    response = requests.get{'http://185.208.208.184:5000/get_ticker?base=BTS&quote=' .. quote_name .. '', headers = headers}
+    response = requests.get{config.rest_bitshares_api .. 'get_ticker?base=BTS&quote=' .. quote_name .. '', headers = headers}
     json_body, error = response.json()
 
     print(quote_name .. "/" .. base_name .. "," .. v.quote_amount/v.base_amount .. "," .. json_body.latest .. "," .. (v.quote_amount/v.base_amount)*json_body.latest)
 
-
-
     -- print(base_name)
     -- print(quote_name)
-
-
-
-
 
 end
