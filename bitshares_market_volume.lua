@@ -51,63 +51,11 @@ end
 
 requests = require('requests')
 
+local queries = require('queries')
+
 headers = {['Content-Type'] = 'application/json'}
 
-first_query = [[
-
-{
-  "version": true,
-  "size": 1000,
-  "sort": [
-    {
-      "block_data.block_time": {
-        "order": "desc",
-        "unmapped_type": "boolean"
-      }
-    }
-  ],
-  "_source": {
-    "excludes": []
-  },
-  "stored_fields": [
-    "*"
-  ],
-  "script_fields": {},
-  "docvalue_fields": [
-    "block_data.block_time",
-    "operation_history.op_object.expiration",
-    "operation_history.op_object.expiration_time"
-  ],
-  "query": {
-    "bool": {
-      "must": [
-        {
-          "query_string": {
-            "query": "operation_type: 4 AND operation_history.op_object.is_maker: false",
-            "analyze_wildcard": true,
-            "default_field": "*"
-          }
-        },
-
-        {
-          "range": {
-            "block_data.block_time": {
-              "gte": "now-1h",
-              "lt": "now"
-            }
-          }
-        }
-      ],
-      "filter": [],
-      "should": [],
-      "must_not": []
-    }
-  }
-}
-
-]]
-
-response = requests.get{'https://elasticsearch.bitshares-kibana.info/_search?scroll=1m', data=first_query, headers = headers}
+response = requests.get{'https://elasticsearch.bitshares-kibana.info/_search?scroll=1m', data=queries.first_query, headers = headers}
 
 json_body, error = response.json()
 
@@ -122,10 +70,10 @@ loop_fills(json_body.hits.hits)
 while total > 0 do
 
     scroll_query = [[
-{
-  "scroll" : "1m",
-  "scroll_id" : "]] .. scroll_id .. [["
-}
+    {
+      "scroll" : "1m",
+      "scroll_id" : "]] .. scroll_id .. [["
+    }
 
     ]]
     response = requests.get{'https://elasticsearch.bitshares-kibana.info/_search/scroll', data=scroll_query, headers = headers}
@@ -141,91 +89,15 @@ end
 -- need to make this more effcient as i am querying each record to just get an asset symbol
 for k, v in pairs(markets) do
 
-    quote_query = [[
-
-        {
-          "version": true,
-          "_source": {
-            "excludes": []
-          },
-          "stored_fields": [
-            "*"
-          ],
-          "script_fields": {},
-          "query": {
-            "bool": {
-              "must": [
-                {
-                  "query_string": {
-                    "query": "_index:\"objects-asset\" _id: ]] .. v.quote .. [[",
-                    "analyze_wildcard": true,
-                    "default_field": "*"
-                  }
-                },
-                {
-                  "range": {
-                    "block_time": {
-                      "gte": "now-5y",
-                      "lt": "now"
-                    }
-                  }
-                }
-              ],
-              "filter": [],
-              "should": [],
-              "must_not": []
-            }
-          }
-        }
-
-    ]]
-
+    quote_query=queries.asset_query(v.quote)
     response = requests.get{'https://elasticsearch.bitshares-kibana.info/_search', data=quote_query, headers = headers}
 
     json_body, error = response.json()
 
-
     quote_name = json_body.hits.hits[1]._source.symbol
     --quote_name = ""
 
-    base_query = [[
-
-        {
-          "version": true,
-          "_source": {
-            "excludes": []
-          },
-          "stored_fields": [
-            "*"
-          ],
-          "script_fields": {},
-          "query": {
-            "bool": {
-              "must": [
-                {
-                  "query_string": {
-                    "query": "_index:\"objects-asset\" _id: ]] .. v.base .. [[",
-                    "analyze_wildcard": true,
-                    "default_field": "*"
-                  }
-                },
-                {
-                  "range": {
-                    "block_time": {
-                      "gte": "now-5y",
-                      "lt": "now"                    }
-                  }
-                }
-              ],
-              "filter": [],
-              "should": [],
-              "must_not": []
-            }
-          }
-        }
-
-    ]]
-
+    base_query=queries.asset_query(v.base)
     response = requests.get{'https://elasticsearch.bitshares-kibana.info/_search', data=base_query, headers = headers}
 
     json_body, error = response.json()
@@ -235,7 +107,10 @@ for k, v in pairs(markets) do
     base_name = json_body.hits.hits[1]._source.symbol
 
 
-    print(quote_name .. "/" .. base_name .. "," .. v.quote_amount/v.base_amount)
+    response = requests.get{'http://185.208.208.184:5000/get_ticker?base=BTS&quote=' .. quote_name .. '', headers = headers}
+    json_body, error = response.json()
+
+    print(quote_name .. "/" .. base_name .. "," .. v.quote_amount/v.base_amount .. "," .. json_body.latest .. "," .. (v.quote_amount/v.base_amount)*json_body.latest)
 
 
 
