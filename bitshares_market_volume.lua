@@ -55,6 +55,5 @@ for k, v in pairs(markets) do
     json_body, error = response.json()
 
     -- print csv
-    print(quote_name .. "/" .. base_name .. "," .. v.quote_amount .. "," .. v.base_amount .. "," .. v.quote_amount/v.base_amount .. json_body.latest ..
-            "," .. (v.quote_amount/v.base_amount)*json_body.latest)
+    print(quote_name .. "/" .. base_name .. "," .. v.quote_amount .. "," .. v.base_amount .. "," .. v.quote_amount/v.base_amount .. "," .. json_body.latest .. "," .. (v.quote_amount/v.base_amount)*json_body.latest)
 end
