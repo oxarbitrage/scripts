@@ -39,21 +39,35 @@ end
 for k, v in pairs(markets) do
 
     -- get quote name
-    quote_query=queries.asset_query(v.quote)
-    response = requests.get{config.es_direct_connection .. '_search', data=quote_query, headers = headers}
-    json_body, error = response.json()
-    quote_name = json_body.hits.hits[1]._source.symbol
+    if v.quote == "1.3.0" then
+        quote_name = "BTS"
+    else
+        quote_query=queries.asset_query(v.quote)
+        response = requests.get{config.es_direct_connection .. '_search', data=quote_query, headers = headers}
+        json_body, error = response.json()
+        quote_name = json_body.hits.hits[1]._source.symbol
+    end
 
     -- get base name
-    base_query=queries.asset_query(v.base)
-    response = requests.get{config.es_direct_connection .. '_search', data=base_query, headers = headers}
-    json_body, error = response.json()
-    base_name = json_body.hits.hits[1]._source.symbol
+    if v.base == "1.3.0" then
+        base_name = "BTS"
+    else
+        base_query=queries.asset_query(v.base)
+        response = requests.get{config.es_direct_connection .. '_search', data=base_query, headers = headers}
+        json_body, error = response.json()
+        base_name = json_body.hits.hits[1]._source.symbol
+    end
 
     -- get ticker data
     response = requests.get{config.rest_bitshares_api .. 'get_ticker?base=BTS&quote=' .. quote_name .. '', headers = headers}
     json_body, error = response.json()
 
+    if json_body.latest == nil then
+        latest = 0
+    else
+        latest = json_body.latest
+    end
+
     -- print csv
-    print(quote_name .. "/" .. base_name .. "," .. v.quote_amount .. "," .. v.base_amount .. "," .. v.quote_amount/v.base_amount .. "," .. json_body.latest .. "," .. (v.quote_amount/v.base_amount)*json_body.latest)
+    print(quote_name .. "/" .. base_name .. "," .. v.quote_amount .. "," .. v.base_amount .. "," .. v.quote_amount/v.base_amount .. "," .. latest)
 end
