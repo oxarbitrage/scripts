@@ -17,6 +17,7 @@ local function loop_fills(hits)
 
                     markets[k2].quote_amount = markets[k2].quote_amount + v._source.operation_history.op_object.pays.amount
                     markets[k2].base_amount = markets[k2].base_amount + v._source.operation_history.op_object.receives.amount
+                    markets[k2].trades = markets[k2].trades + 1
                     new = false
 
                     break
@@ -29,7 +30,8 @@ local function loop_fills(hits)
                 quote = v._source.operation_history.op_object.pays.asset_id,
                 base = v._source.operation_history.op_object.receives.asset_id,
                 quote_amount = v._source.operation_history.op_object.pays.amount,
-                base_amount = v._source.operation_history.op_object.receives.amount
+                base_amount = v._source.operation_history.op_object.receives.amount,
+                trades = 1
             }
         end
     end

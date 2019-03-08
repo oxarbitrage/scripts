@@ -35,6 +35,15 @@ while total > 0 do
     functions.loop_fills(json_body.hits.hits)
 end
 
+-- header csv
+print("Market,",
+    "Sum(Quote amounts),",
+    "Sum(Base amounts),",
+    "Quote/BTS ticker,",
+    "Base/bts ticker,",
+    "Volume in BTS,",
+    "Trade count")
+
 -- loop collected data in markets table
 for k, v in pairs(markets) do
 
@@ -46,6 +55,7 @@ for k, v in pairs(markets) do
         response = requests.get{config.es_direct_connection .. '_search', data=quote_query, headers = headers}
         json_body, error = response.json()
         quote_name = json_body.hits.hits[1]._source.symbol
+        quote_precision = json_body.hits.hits[1]._source.precision
     end
 
     -- get base name
@@ -56,18 +66,48 @@ for k, v in pairs(markets) do
         response = requests.get{config.es_direct_connection .. '_search', data=base_query, headers = headers}
         json_body, error = response.json()
         base_name = json_body.hits.hits[1]._source.symbol
+        base_precision = json_body.hits.hits[1]._source.precision
+
     end
 
-    -- get ticker data
+    -- get ticker data using quote
     response = requests.get{config.rest_bitshares_api .. 'get_ticker?base=BTS&quote=' .. quote_name .. '', headers = headers}
     json_body, error = response.json()
 
     if json_body.latest == nil then
-        latest = 0
+        latest_using_quote = 0
     else
-        latest = json_body.latest
+        latest_using_quote = json_body.latest
+    end
+
+    -- get ticker data using base
+    response = requests.get{config.rest_bitshares_api .. 'get_ticker?base=BTS&quote=' .. base_name .. '', headers = headers}
+    json_body, error = response.json()
+
+    if json_body.latest == nil then
+        latest_using_base = 0
+    else
+        latest_using_base = json_body.latest
+    end
+
+    -- calculate volume in bts as we can
+    volume_in_bts = 0
+    if tonumber(latest_using_quote) > 0 and  tonumber(latest_using_base) == 0 then
+        volume_in_bts = (v.quote_amount/10^quote_precision)*latest_using_quote
+    elseif tonumber(latest_using_base) > 0 and tonumber(latest_using_quote) == 0 then
+        volume_in_bts = (v.base_amount/10^base_precision)*latest_using_base
+    elseif tonumber(latest_using_base) == 0 and tonumber(latest_using_quote) == 0 then
+        volume_in_bts = 0
+    elseif tonumber(latest_using_base) > 0 and tonumber(latest_using_quote) > 0 then
+        volume_in_bts = (v.quote_amount/10^quote_precision)*latest_using_quote
     end
 
     -- print csv
-    print(quote_name .. "/" .. base_name .. "," .. v.quote_amount .. "," .. v.base_amount .. "," .. v.quote_amount/v.base_amount .. "," .. latest)
+    print(quote_name .. "/" .. base_name .. ",",
+        v.quote_amount .. ",",
+        v.base_amount .. ",",
+        latest_using_quote .. ",",
+        latest_using_base .. ",",
+        volume_in_bts .. ",",
+        v.trades)
 end
