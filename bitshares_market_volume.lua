@@ -9,7 +9,7 @@ headers = {['Content-Type'] = 'application/json'}
 markets = {} -- our table to store quote_id, base_id, quote_amount and base_amount
 
 -- queries ES with all fill orders taker side in period of time
-response = requests.get{config.es_direct_connection .. '_search?scroll=1m', data=queries.first_query(config.from, config.to), headers = headers}
+response = requests.get{config.es_direct_connection .. '_search?scroll=1m', data=queries.first_query(config.from, config.to, config.match_id), headers = headers}
 json_body, error = response.json()
 
 total = json_body.hits.total -- total fill orders in period
@@ -40,7 +40,7 @@ print("Market,",
     "Sum(Quote amounts),",
     "Sum(Base amounts),",
     "Quote/BTS ticker,",
-    "Base/bts ticker,",
+    "Base/BTS ticker,",
     "Volume in BTS,",
     "Trade count")
 
@@ -102,12 +102,15 @@ for k, v in pairs(markets) do
         volume_in_bts = (v.quote_amount/10^quote_precision)*latest_using_quote
     end
 
-    -- print csv
-    print(quote_name .. "/" .. base_name .. ",",
-        v.quote_amount .. ",",
-        v.base_amount .. ",",
-        latest_using_quote .. ",",
-        latest_using_base .. ",",
-        volume_in_bts .. ",",
-        v.trades)
+    -- only bridge
+    -- if string.sub(quote_name, 1, 4) == "OPEN" or string.sub(base_name, 1, 4) == "OPEN" then
+        -- print csv
+        print(quote_name .. "/" .. base_name .. ",",
+            v.quote_amount .. ",",
+            v.base_amount .. ",",
+            latest_using_quote .. ",",
+            latest_using_base .. ",",
+            volume_in_bts .. ",",
+            v.trades)
+    -- end
 end

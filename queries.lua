@@ -1,6 +1,12 @@
 local Q = {}
 
-local function first_query(from, to)
+local function first_query(from, to, match_id)
+
+    if match_id then
+        match_id_query  = " AND (operation_history.op_object.pays.asset_id: " .. match_id .. " OR operation_history.op_object.receives.asset_id: " .. match_id .. ")"
+    else
+        match_id_query = ""
+    end
 
 return [[
 
@@ -32,7 +38,7 @@ return [[
           "must": [
             {
               "query_string": {
-                "query": "operation_type: 4 AND operation_history.op_object.is_maker: false",
+                "query": "operation_type: 4 AND operation_history.op_object.is_maker: false]] .. match_id_query .. [[",
                 "analyze_wildcard": true,
                 "default_field": "*"
               }
